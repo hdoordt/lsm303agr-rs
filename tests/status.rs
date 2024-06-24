@@ -32,14 +32,19 @@ macro_rules! get_st_test {
             use super::*;
             mod accel {
                 use super::*;
-                #[test]
-                fn $name() {
+                #[cfg_attr(not(feature = "async"), test)]
+                #[cfg_attr(feature = "async", tokio::test)]
+                #[maybe_async_cfg::maybe(
+                    sync(cfg(not(feature = "async")), keep_self,),
+                    async(cfg(feature = "async"), keep_self,)
+                )]
+                async fn $name() {
                     let mut sensor = new_i2c(&[I2cTrans::write_read(
                         ACCEL_ADDR,
                         vec![Register::STATUS_REG_A],
                         vec![$st],
                     )]);
-                    let st = sensor.accel_status().unwrap();
+                    let st = sensor.accel_status().await.unwrap();
                     status_eq!(
                         st,
                         $xyz_overrun,
@@ -56,14 +61,19 @@ macro_rules! get_st_test {
             }
             mod mag {
                 use super::*;
-                #[test]
-                fn $name() {
+                #[cfg_attr(not(feature = "async"), test)]
+                #[cfg_attr(feature = "async", tokio::test)]
+                #[maybe_async_cfg::maybe(
+                    sync(cfg(not(feature = "async")), keep_self,),
+                    async(cfg(feature = "async"), keep_self,)
+                )]
+                async fn $name() {
                     let mut sensor = new_i2c(&[I2cTrans::write_read(
                         MAG_ADDR,
                         vec![Register::STATUS_REG_M],
                         vec![$st],
                     )]);
-                    let st = sensor.mag_status().unwrap();
+                    let st = sensor.mag_status().await.unwrap();
                     status_eq!(
                         st,
                         $xyz_overrun,

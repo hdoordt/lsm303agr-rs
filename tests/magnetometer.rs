@@ -11,14 +11,20 @@ use lsm303agr::{MagMode, MagOutputDataRate as ODR};
 
 macro_rules! set_mag_odr {
     ($name:ident, $hz:ident, $value:expr) => {
-        #[test]
-        fn $name() {
+        #[cfg_attr(not(feature = "async"), test)]
+        #[cfg_attr(feature = "async", tokio::test)]
+        #[maybe_async_cfg::maybe(
+            sync(cfg(not(feature = "async")), keep_self,),
+            async(cfg(feature = "async"), keep_self,)
+        )]
+        async fn $name() {
             let mut sensor = new_i2c(&[I2cTrans::write(
                 MAG_ADDR,
                 vec![Register::CFG_REG_A_M, $value | DEFAULT_CFG_REG_A_M],
             )]);
             sensor
                 .set_mag_mode_and_odr(&mut Delay, MagMode::HighResolution, ODR::$hz)
+                .await
                 .unwrap();
             destroy_i2c(sensor);
         }
@@ -29,8 +35,13 @@ set_mag_odr!(set_mag_odr_hz20, Hz20, 1 << 2);
 set_mag_odr!(set_mag_odr_hz50, Hz50, 2 << 2);
 set_mag_odr!(set_mag_odr_hz100, Hz100, 3 << 2);
 
-#[test]
-fn can_change_mode() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_change_mode() {
     let mut sensor = new_i2c(&[
         // Set low-power mode
         I2cTrans::write(
@@ -44,11 +55,13 @@ fn can_change_mode() {
 
     sensor
         .set_mag_mode_and_odr(&mut Delay, MagMode::LowPower, ODR::Hz100)
+        .await
         .unwrap();
     assert_eq!(sensor.get_mag_mode(), MagMode::LowPower);
 
     sensor
         .set_mag_mode_and_odr(&mut Delay, MagMode::HighResolution, ODR::Hz10)
+        .await
         .unwrap();
     assert_eq!(sensor.get_mag_mode(), MagMode::HighResolution);
 
@@ -61,8 +74,13 @@ macro_rules! assert_eq_xyz_nt {
     }};
 }
 
-#[test]
-fn can_take_one_shot_measurement_i2c() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_take_one_shot_measurement_i2c() {
     let mut sensor = new_i2c(&[
         I2cTrans::write_read(MAG_ADDR, vec![Register::STATUS_REG_M], vec![0]),
         I2cTrans::write_read(MAG_ADDR, vec![Register::CFG_REG_A_M], vec![0]), // idle
@@ -76,7 +94,11 @@ fn can_take_one_shot_measurement_i2c() {
             vec![0x10, 0x20, 0x30, 0x40, 0x50, 0x60],
         ),
     ]);
+    #[cfg(not(feature = "async"))]
     let data = nb::block!(sensor.magnetic_field()).unwrap();
+    
+    #[cfg(feature = "async")]
+    let data = sensor.magnetic_field().await.unwrap();
 
     assert_eq_xyz_nt!(data);
 
@@ -95,8 +117,13 @@ fn can_take_one_shot_measurement_i2c() {
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_take_continuous_measurement_i2c() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_take_continuous_measurement_i2c() {
     let sensor = new_i2c(&[
         I2cTrans::write(MAG_ADDR, vec![Register::CFG_REG_A_M, 0]),
         I2cTrans::write_read(
@@ -105,8 +132,8 @@ fn can_take_continuous_measurement_i2c() {
             vec![0x10, 0x20, 0x30, 0x40, 0x50, 0x60],
         ),
     ]);
-    let mut sensor = sensor.into_mag_continuous().ok().unwrap();
-    let data = sensor.magnetic_field().unwrap();
+    let mut sensor = sensor.into_mag_continuous().await.ok().unwrap();
+    let data = sensor.magnetic_field().await.unwrap();
 
     assert_eq_xyz_nt!(data);
 
@@ -125,8 +152,13 @@ fn can_take_continuous_measurement_i2c() {
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_take_continuous_measurement_spi() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_take_continuous_measurement_spi() {
     let sensor = new_spi_mag(&[
         SpiTrans::transaction_start(),
         SpiTrans::write_vec(vec![Register::CFG_REG_A_M, 0]),
@@ -146,8 +178,8 @@ fn can_take_continuous_measurement_spi() {
         ),
         SpiTrans::transaction_end(),
     ]);
-    let mut sensor = sensor.into_mag_continuous().ok().unwrap();
-    let data = sensor.magnetic_field().unwrap();
+    let mut sensor = sensor.into_mag_continuous().await.ok().unwrap();
+    let data = sensor.magnetic_field().await.unwrap();
 
     assert_eq_xyz_nt!(data);
 
@@ -166,8 +198,13 @@ fn can_take_continuous_measurement_spi() {
     destroy_spi(sensor);
 }
 
-#[test]
-fn can_enable_mag_offset_cancellation_continuous() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_enable_mag_offset_cancellation_continuous() {
     let sensor = new_i2c(&[
         // Mag continuous mode
         I2cTrans::write(MAG_ADDR, vec![Register::CFG_REG_A_M, 0]),
@@ -177,17 +214,24 @@ fn can_enable_mag_offset_cancellation_continuous() {
 
     let mut sensor = sensor
         .into_mag_continuous()
+        .await
         .expect("failed to set magnetometer into continuous mode");
 
     sensor
         .enable_mag_offset_cancellation()
+        .await
         .expect("failed to enable offset cancellation");
 
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_disable_mag_offset_cancellation_continuous() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_disable_mag_offset_cancellation_continuous() {
     let sensor = new_i2c(&[
         // Mag continuous mode
         I2cTrans::write(MAG_ADDR, vec![Register::CFG_REG_A_M, 0]),
@@ -197,17 +241,24 @@ fn can_disable_mag_offset_cancellation_continuous() {
 
     let mut sensor = sensor
         .into_mag_continuous()
+        .await
         .expect("failed to set magnetometer into continuous mode");
 
     sensor
         .disable_mag_offset_cancellation()
+        .await
         .expect("failed to disable offset cancellation");
 
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_enable_mag_offset_cancellation_one_shot() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_enable_mag_offset_cancellation_one_shot() {
     let mut sensor = new_i2c(&[
         // Enable offset cancellation
         I2cTrans::write(
@@ -221,13 +272,19 @@ fn can_enable_mag_offset_cancellation_one_shot() {
 
     sensor
         .enable_mag_offset_cancellation()
+        .await
         .expect("failed to disable offset cancellation");
 
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_disable_mag_offset_cancellation_one_shot() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_disable_mag_offset_cancellation_one_shot() {
     let mut sensor = new_i2c(&[
         // Disable offset cancellation
         I2cTrans::write(MAG_ADDR, vec![Register::CFG_REG_B_M, 0]),
@@ -235,13 +292,19 @@ fn can_disable_mag_offset_cancellation_one_shot() {
 
     sensor
         .disable_mag_offset_cancellation()
+        .await
         .expect("failed to disable offset cancellation");
 
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_enable_mag_low_pass_filter() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_enable_mag_low_pass_filter() {
     let mut sensor = new_i2c(&[
         // Enable low-pass filter
         I2cTrans::write(MAG_ADDR, vec![Register::CFG_REG_B_M, 0b1]),
@@ -249,13 +312,19 @@ fn can_enable_mag_low_pass_filter() {
 
     sensor
         .mag_enable_low_pass_filter()
+        .await
         .expect("failed to enable low-pass filter");
 
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_disable_mag_low_pass_filter() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_disable_mag_low_pass_filter() {
     let mut sensor = new_i2c(&[
         // Disable low-pass filter
         I2cTrans::write(MAG_ADDR, vec![Register::CFG_REG_B_M, 0b0]),
@@ -263,6 +332,7 @@ fn can_disable_mag_low_pass_filter() {
 
     sensor
         .mag_disable_low_pass_filter()
+        .await
         .expect("failed to disable low-pass filter");
 
     destroy_i2c(sensor);

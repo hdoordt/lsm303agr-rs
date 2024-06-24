@@ -7,8 +7,13 @@ use lsm303agr::{AccelMode as Mode, AccelOutputDataRate as ODR, FifoMode, Interru
 
 macro_rules! low_pwr {
     ($name:ident, $hz:ident, $value:expr) => {
-        #[test]
-        fn $name() {
+        #[cfg_attr(not(feature = "async"), test)]
+        #[cfg_attr(feature = "async", tokio::test)]
+        #[maybe_async_cfg::maybe(
+            sync(cfg(not(feature = "async")), keep_self,),
+            async(cfg(feature = "async"), keep_self,)
+        )]
+        async fn $name() {
             let mut sensor = new_i2c(&[
                 I2cTrans::write(ACCEL_ADDR, vec![Register::CTRL_REG4_A, 0]),
                 I2cTrans::write(
@@ -21,6 +26,7 @@ macro_rules! low_pwr {
             ]);
             sensor
                 .set_accel_mode_and_odr(&mut Delay, Mode::LowPower, ODR::$hz)
+                .await
                 .unwrap();
             destroy_i2c(sensor);
         }
@@ -39,8 +45,13 @@ low_pwr!(low_power_khz5_376, Khz5_376LowPower, 9 << 4);
 
 macro_rules! normal_pwr {
     ($name:ident, $hz:ident, $value:expr) => {
-        #[test]
-        fn $name() {
+        #[cfg_attr(not(feature = "async"), test)]
+        #[cfg_attr(feature = "async", tokio::test)]
+        #[maybe_async_cfg::maybe(
+            sync(cfg(not(feature = "async")), keep_self,),
+            async(cfg(feature = "async"), keep_self,)
+        )]
+        async fn $name() {
             let mut sensor = new_i2c(&[
                 I2cTrans::write(ACCEL_ADDR, vec![Register::CTRL_REG4_A, 0]),
                 I2cTrans::write(
@@ -50,6 +61,7 @@ macro_rules! normal_pwr {
             ]);
             sensor
                 .set_accel_mode_and_odr(&mut Delay, Mode::Normal, ODR::$hz)
+                .await
                 .unwrap();
             destroy_i2c(sensor);
         }
@@ -65,17 +77,28 @@ normal_pwr!(normal_hz200, Hz200, 6 << 4);
 normal_pwr!(normal_hz400, Hz400, 7 << 4);
 normal_pwr!(normal_khz1_344, Khz1_344, 9 << 4);
 
-#[test]
-fn incompatible_accel_mode() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn incompatible_accel_mode() {
     let mut sensor = new_i2c(&[]);
     sensor
         .set_accel_mode_and_odr(&mut Delay, Mode::LowPower, ODR::Khz1_344)
+        .await
         .expect_err("should have returned error");
     destroy_i2c(sensor);
 }
 
-#[test]
-fn change_mode_and_odr_normal_low_high() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn change_mode_and_odr_normal_low_high() {
     let mut sensor = new_i2c(&[
         I2cTrans::write(ACCEL_ADDR, vec![Register::CTRL_REG4_A, 0]),
         I2cTrans::write(
@@ -98,31 +121,45 @@ fn change_mode_and_odr_normal_low_high() {
     ]);
     sensor
         .set_accel_mode_and_odr(&mut Delay, Mode::Normal, ODR::Hz10)
+        .await
         .unwrap();
     sensor
         .set_accel_mode_and_odr(&mut Delay, Mode::LowPower, ODR::Hz10)
+        .await
         .unwrap();
     sensor
         .set_accel_mode_and_odr(&mut Delay, Mode::HighResolution, ODR::Hz10)
+        .await
         .unwrap();
 
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_power_down() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_power_down() {
     let mut sensor = new_i2c(&[
         I2cTrans::write(ACCEL_ADDR, vec![Register::CTRL_REG4_A, 0]),
         I2cTrans::write(ACCEL_ADDR, vec![Register::CTRL_REG1_A, DEFAULT_CTRL_REG1_A]),
     ]);
     sensor
         .set_accel_mode_and_odr(&mut Delay, Mode::PowerDown, None)
+        .await
         .unwrap();
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_set_mode_normal() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_set_mode_normal() {
     let mut sensor = new_i2c(&[
         I2cTrans::write(ACCEL_ADDR, vec![Register::CTRL_REG4_A, 0]),
         I2cTrans::write(
@@ -132,12 +169,18 @@ fn can_set_mode_normal() {
     ]);
     sensor
         .set_accel_mode_and_odr(&mut Delay, Mode::Normal, ODR::Hz100)
+        .await
         .unwrap();
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_set_mode_high_resolution() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_set_mode_high_resolution() {
     let mut sensor = new_i2c(&[
         I2cTrans::write(
             ACCEL_ADDR,
@@ -147,12 +190,18 @@ fn can_set_mode_high_resolution() {
     ]);
     sensor
         .set_accel_mode_and_odr(&mut Delay, Mode::HighResolution, ODR::Khz1_344)
+        .await
         .unwrap();
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_set_mode_low_power() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_set_mode_low_power() {
     let mut sensor = new_i2c(&[
         I2cTrans::write(ACCEL_ADDR, vec![Register::CTRL_REG4_A, 0]),
         I2cTrans::write(
@@ -165,12 +214,18 @@ fn can_set_mode_low_power() {
     ]);
     sensor
         .set_accel_mode_and_odr(&mut Delay, Mode::LowPower, ODR::Khz5_376LowPower)
+        .await
         .unwrap();
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_power_down_after_odr3() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_power_down_after_odr3() {
     let mut sensor = new_i2c(&[
         I2cTrans::write(ACCEL_ADDR, vec![Register::CTRL_REG4_A, 0]),
         I2cTrans::write(
@@ -185,30 +240,44 @@ fn can_power_down_after_odr3() {
     ]);
     sensor
         .set_accel_mode_and_odr(&mut Delay, Mode::LowPower, ODR::Khz1_620LowPower)
+        .await
         .unwrap();
     sensor
         .set_accel_mode_and_odr(&mut Delay, Mode::PowerDown, None)
+        .await
         .unwrap();
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_enable_disable_interrupts() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_enable_disable_interrupts() {
     let mut sensor = new_i2c(&[
         I2cTrans::write(ACCEL_ADDR, vec![Register::CTRL_REG3_A, 0b100]),
         I2cTrans::write(ACCEL_ADDR, vec![Register::CTRL_REG3_A, 0b000]),
     ]);
     sensor
         .acc_enable_interrupt(Interrupt::FifoWatermark)
+        .await
         .unwrap();
     sensor
         .acc_disable_interrupt(Interrupt::FifoWatermark)
+        .await
         .unwrap();
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_set_fifo_mode() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_set_fifo_mode() {
     let mut sensor = new_i2c(&[
         // Enable FIFO
         I2cTrans::write(ACCEL_ADDR, vec![Register::CTRL_REG5_A, 0b01000000]),
@@ -223,8 +292,8 @@ fn can_set_fifo_mode() {
         // Bypass mode, 0
         I2cTrans::write(ACCEL_ADDR, vec![Register::FIFO_CTRL_REG_A, 0b00000000]),
     ]);
-    sensor.acc_set_fifo_mode(FifoMode::Stream, 31).unwrap();
-    sensor.acc_set_fifo_mode(FifoMode::Fifo, 4).unwrap();
-    sensor.acc_set_fifo_mode(FifoMode::Bypass, 0).unwrap();
+    sensor.acc_set_fifo_mode(FifoMode::Stream, 31).await.unwrap();
+    sensor.acc_set_fifo_mode(FifoMode::Fifo, 4).await.unwrap();
+    sensor.acc_set_fifo_mode(FifoMode::Bypass, 0).await.unwrap();
     destroy_i2c(sensor);
 }

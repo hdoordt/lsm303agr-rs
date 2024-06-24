@@ -62,8 +62,13 @@ fn i2c_scale_txns(mode: &AccelMode, scale: &AccelScale) -> Vec<I2cTrans> {
 
 macro_rules! can_get_i2c {
     ( $name:ident, $mode:ident, $scale:ident, $expected_x:expr, $expected_y:expr, $expected_z:expr ) => {
-        #[test]
-        fn $name() {
+        #[cfg_attr(not(feature = "async"), test)]
+        #[cfg_attr(feature = "async", tokio::test)]
+        #[maybe_async_cfg::maybe(
+            sync(cfg(not(feature = "async")), keep_self,),
+            async(cfg(feature = "async"), keep_self,)
+        )]
+        async fn $name() {
             let mode = AccelMode::$mode;
             let scale = AccelScale::$scale;
             let mut txns: Vec<I2cTrans> = vec![];
@@ -78,14 +83,15 @@ macro_rules! can_get_i2c {
 
             sensor
                 .set_accel_mode_and_odr(&mut Delay, mode, AccelOutputDataRate::Hz50)
+                .await
                 .unwrap();
 
             if let AccelScale::G2 = scale {
             } else {
-                sensor.set_accel_scale(scale).unwrap();
+                sensor.set_accel_scale(scale).await.unwrap();
             }
 
-            let data = sensor.acceleration().unwrap();
+            let data = sensor.acceleration().await.unwrap();
 
             assert_eq!(data.x_mg(), $expected_x);
             assert_eq!(data.y_mg(), $expected_y);
@@ -150,8 +156,13 @@ macro_rules! assert_eq_xyz_mg {
     }};
 }
 
-#[test]
-fn can_get_8_bit_data_i2c() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_get_8_bit_data_i2c() {
     let mut sensor = new_i2c(&[
         I2cTrans::write(ACCEL_ADDR, vec![Register::CTRL_REG4_A, 0]),
         I2cTrans::write(
@@ -169,8 +180,9 @@ fn can_get_8_bit_data_i2c() {
     ]);
     sensor
         .set_accel_mode_and_odr(&mut Delay, AccelMode::LowPower, AccelOutputDataRate::Hz50)
+        .await
         .unwrap();
-    let data = sensor.acceleration().unwrap();
+    let data = sensor.acceleration().await.unwrap();
 
     assert_eq_xyz_mg!(data);
 
@@ -195,8 +207,13 @@ fn can_get_8_bit_data_i2c() {
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_get_10_bit_data_i2c() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_get_10_bit_data_i2c() {
     let mut sensor = new_i2c(&[
         I2cTrans::write(ACCEL_ADDR, vec![Register::CTRL_REG4_A, 0]),
         I2cTrans::write(
@@ -211,8 +228,9 @@ fn can_get_10_bit_data_i2c() {
     ]);
     sensor
         .set_accel_mode_and_odr(&mut Delay, AccelMode::Normal, AccelOutputDataRate::Hz50)
+        .await
         .unwrap();
-    let data = sensor.acceleration().unwrap();
+    let data = sensor.acceleration().await.unwrap();
 
     assert_eq_xyz_mg!(data);
 
@@ -238,8 +256,13 @@ fn can_get_10_bit_data_i2c() {
     destroy_i2c(sensor);
 }
 
-#[test]
-fn can_get_10_bit_data_spi() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_get_10_bit_data_spi() {
     let mut sensor = new_spi_accel(&[
         SpiTrans::transaction_start(),
         SpiTrans::write_vec(vec![Register::CTRL_REG4_A, 0]),
@@ -264,8 +287,9 @@ fn can_get_10_bit_data_spi() {
     ]);
     sensor
         .set_accel_mode_and_odr(&mut Delay, AccelMode::Normal, AccelOutputDataRate::Hz50)
+        .await
         .unwrap();
-    let data = sensor.acceleration().unwrap();
+    let data = sensor.acceleration().await.unwrap();
 
     assert_eq_xyz_mg!(data);
 
@@ -289,8 +313,13 @@ fn can_get_10_bit_data_spi() {
     destroy_spi(sensor);
 }
 
-#[test]
-fn can_get_12_bit_data_i2c() {
+#[cfg_attr(not(feature = "async"), test)]
+#[cfg_attr(feature = "async", tokio::test)]
+#[maybe_async_cfg::maybe(
+    sync(cfg(not(feature = "async")), keep_self,),
+    async(cfg(feature = "async"), keep_self,)
+)]
+async fn can_get_12_bit_data_i2c() {
     let mut sensor = new_i2c(&[
         I2cTrans::write(
             ACCEL_ADDR,
@@ -309,8 +338,9 @@ fn can_get_12_bit_data_i2c() {
             AccelMode::HighResolution,
             AccelOutputDataRate::Hz50,
         )
+        .await
         .unwrap();
-    let data = sensor.acceleration().unwrap();
+    let data = sensor.acceleration().await.unwrap();
 
     assert_eq_xyz_mg!(data);
 
